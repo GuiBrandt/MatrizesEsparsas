@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace MatrizesDeListas
 {
@@ -9,7 +10,7 @@ namespace MatrizesDeListas
     class Matriz
     {
         int cols, rows;
-        NoListaCruzada<double> primeiro;
+        Celula primeiro;
 
         /// <summary>
         /// Valor para quando um item na matriz não é definido
@@ -22,7 +23,7 @@ namespace MatrizesDeListas
         const string OUT_OF_BOUNDS_MSG = "A coordenada especificada não se encontra na matriz";
 
         /// <summary>
-        /// Obtém o número numa determinada posição na matriz
+        /// Obtém ou define o número numa determinada posição na matriz
         /// </summary>
         /// <param name="col">Coluna do dado que se deseja obter</param>
         /// <param name="row">Linha do dado que se deseja obter</param>
@@ -37,7 +38,7 @@ namespace MatrizesDeListas
                     col > NumeroDeColunas || row > NumeroDeLinhas)
                         throw new IndexOutOfRangeException(OUT_OF_BOUNDS_MSG);
 
-                NoListaCruzada<double> atual = this.primeiro;
+                Celula atual = this.primeiro;
 
                 // Move o atual para o cabeçalho da coluna desejada
                 for (int i = 0; i < col; i++)
@@ -63,7 +64,7 @@ namespace MatrizesDeListas
                     col > NumeroDeColunas || row > NumeroDeLinhas)
                     throw new IndexOutOfRangeException(OUT_OF_BOUNDS_MSG);
 
-                NoListaCruzada<double> atual = this.primeiro;
+                Celula atual = this.primeiro, antVert = this.primeiro;
 
                 // Move o atual para o cabeçalho da coluna desejada
                 for (int i = 0; i < col; i++)
@@ -71,14 +72,17 @@ namespace MatrizesDeListas
 
                 // Move o atual para a linha desejada
                 while (atual != null && atual.Linha < row)
+                {
+                    antVert = atual;
                     atual = atual.ProxVert;
+                }
 
                 // Se a linha de atual bate com a desejada, retorna o atual
-                if (atual != null && atual.Linha == row)
+                if (atual != null && atual.Linha == row && value != DEFAULT)
                     atual.Info = value;
                 else
                 {
-                    NoListaCruzada<double> auxCol = this.primeiro, auxRow = null;
+                    Celula auxCol = this.primeiro, auxRow = null;
 
                     while (auxCol.Coluna < col)
                         auxCol = auxCol.ProxHorz;
@@ -92,47 +96,8 @@ namespace MatrizesDeListas
                         return;
                     }
 
-                    // Cria o nó para inserir
-                    var no = new NoListaCruzada<double>(col, row, value, null, atual.ProxVert);
-
-                    //
-                    // Obtenção do próximo item na horizontal
-                    //
-                    #region GetProxHorz
-
-                    auxCol = this.primeiro;
-
-                    // Move o auxiliar até a coluna à frente do item desejado
-                    while (auxCol.Coluna < col + 1)
-                        auxCol = auxCol.ProxHorz;
-
-                    for (; auxCol.Coluna < NumeroDeColunas; auxCol = auxCol.ProxHorz)
-                    {
-                        auxRow = auxCol.ProxVert;
-
-                        if (auxRow == null) continue;
-
-                        // Procura o item na linha desejada da coluna desejada
-                        while (auxRow != null || auxRow.Linha < row)
-                            auxRow = auxRow.ProxVert;
-
-                        // Se achou um item, este será o próximo na horizontal
-                        if (auxRow.Linha == row)
-                            break;
-                    }
-
-                    NoListaCruzada<double> proxHorz = auxRow.Linha == row ? auxRow : null;
-
-                    no.ProxHorz = proxHorz;
-
-                    #endregion
-
-                    //
-                    // Obtenção do item anterior na horizontal
-                    //
-                    #region GetAntHorz
-
-                    NoListaCruzada<double> antHorz = null;
+                    // Obtém o item anterior na horizontal
+                    Celula antHorz = null;
 
                     auxCol = this.primeiro;
                     while (auxCol.Coluna < col)
@@ -150,11 +115,21 @@ namespace MatrizesDeListas
                         auxCol = auxCol.ProxHorz;
                     }
 
-                    antHorz.ProxHorz = no;
+                    // Cria o nó para inserir
+                    if (value != DEFAULT)
+                    {
+                        var no = new Celula(col, row, value, null, atual.ProxVert);
 
-                    #endregion
+                        no.ProxHorz = antHorz.ProxHorz;
+                        antHorz.ProxHorz = no;
 
-                    atual.ProxVert = no;
+                        atual.ProxVert = no;
+                    }
+                    else if (atual.Linha == row)
+                    {
+                        antVert.ProxVert = atual.ProxVert;
+                        antHorz.ProxHorz = atual.ProxHorz;
+                    }
                 }
             }
         }
@@ -173,7 +148,7 @@ namespace MatrizesDeListas
         public int NumeroDeLinhas
         {
             get { return rows; }
-        }
+        } 
 
         /// <summary>
         /// Construtor
@@ -183,17 +158,93 @@ namespace MatrizesDeListas
             this.cols = cols;
             this.rows = rows;
 
-            this.primeiro = new NoListaCruzada<double>(-1, -1, 0);
+            this.primeiro = new Celula(-1, -1, 0);
 
-            NoListaCruzada<double> aux = null;
+            Celula aux = null;
 
+            // Cria os nós cabeça
             for (int i = rows; i >= 0; --i)
-                aux = new NoListaCruzada<double>(-1, i, 0, null, aux);
+                aux = new Celula(-1, i, 0, null, aux);
             primeiro.ProxVert = aux;
 
             for (int i = cols; i >= 0; --i)
-                aux = new NoListaCruzada<double>(-1, i, 0, aux, null);
+                aux = new Celula(-1, i, 0, aux, null);
             primeiro.ProxHorz = aux;
+        }
+
+        /// <summary>
+        /// Multiplicação
+        /// </summary>
+        /// <param name="a">Uma matriz</param>
+        /// <param name="b">Outra matriz, com número de linhas igual ao número de colunas da primeira</param>
+        /// <returns>O produto das matrizes, será sempre uma matriz com o número de linhas da primeira 
+        /// e o número de colunas da segunda</returns>
+        public static Matriz operator*(Matriz a, Matriz b)
+        {
+            // O número de linhas de B tem que ser igual ao número de colunas de A,
+            // se não for, as matrizes não são multiplicáveis
+            if (b.NumeroDeLinhas != a.NumeroDeColunas)
+                throw new Exception("Multiplicação de matrizes inválida");
+
+            Matriz resultado = new Matriz(b.NumeroDeColunas, a.NumeroDeLinhas);
+
+            // Percorre cada linha da matriz A e cada coluna da matriz B para calcular
+            // o resultado da multiplicação e montar a matriz resultado
+            for (Celula linha = a.primeiro; linha != null; linha = linha.ProxVert)
+            {
+                for (Celula coluna = b.primeiro; coluna != null; coluna = coluna.ProxHorz)
+                {
+                    double soma = 0.0;
+
+                    Celula atualA = linha.ProxHorz;
+                    Celula atualB = coluna.ProxVert;
+
+                    // Faz a soma dos produtos entre as linha atual em A e a coluna atual em B
+                    do
+                    {
+                        soma += atualA.Info * atualB.Info;
+
+                        atualA = atualA.ProxHorz;
+                        atualB = atualB.ProxVert;
+                    } while (atualA != null & atualB != null);
+
+                    resultado[coluna.Coluna, linha.Linha] = soma;
+                }
+            }
+
+            return resultado;
+        }
+
+        /// <summary>
+        /// Soma
+        /// </summary>
+        /// <param name="a">Uma matriz</param>
+        /// <param name="b">Outra matriz, com as mesmas dimensões da primeira</param>
+        /// <returns>A soma das matriz, será sempre uma matriz de dimensão igual à das passadas por
+        /// parâmetro</returns>
+        public static Matriz operator+(Matriz a, Matriz b)
+        {
+            // As matrizes têm de ter as mesmas dimensões para a soma
+            if (b.NumeroDeColunas != a.NumeroDeColunas || b.NumeroDeLinhas != a.NumeroDeLinhas)
+                throw new Exception("Soma de matrizes inválida");
+
+            Matriz resultado = new Matriz(a.NumeroDeColunas, a.NumeroDeLinhas);
+
+            // Percorre cada linha e cada coluna das duas matrizes simultaneamente e soma os valores
+            // das matrizes para montar a matriz resultado
+            for (
+                Celula rowA = a.primeiro, rowB = b.primeiro; 
+                rowA != null && rowB != null; 
+                rowA = rowA.ProxVert, rowB = rowB.ProxVert
+            )
+                for (
+                    Celula atualA = rowA.ProxHorz, atualB = rowB.ProxHorz;
+                    atualA != null && atualB != null;
+                    atualA = atualA.ProxHorz, atualB = atualB.ProxHorz
+                )
+                    resultado[atualA.Coluna, rowA.Linha] = atualA.Info + atualB.Info;
+
+            return resultado;
         }
     }
 }
