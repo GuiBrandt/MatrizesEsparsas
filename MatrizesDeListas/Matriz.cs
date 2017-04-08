@@ -1,5 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
+﻿/**
+ * Matriz.cs
+ * 
+ * Arquivo da classe para manipulação de matrizes
+ * 
+ * Guilherme Brandt (RA: 16173)
+ * Lucas Hideki (RA: 16186)
+ */
+using System;
 
 namespace MatrizesDeListas
 {
@@ -10,7 +17,7 @@ namespace MatrizesDeListas
     class Matriz
     {
         int cols, rows;
-        Celula primeiro;
+        Celula head;
 
         /// <summary>
         /// Valor para quando um item na matriz não é definido
@@ -38,7 +45,7 @@ namespace MatrizesDeListas
                     col > NumeroDeColunas || row > NumeroDeLinhas)
                         throw new IndexOutOfRangeException(OUT_OF_BOUNDS_MSG);
 
-                Celula atual = this.primeiro;
+                Celula atual = this.head;
 
                 // Move o atual para o cabeçalho da coluna desejada
                 for (int i = 0; i < col; i++)
@@ -64,7 +71,7 @@ namespace MatrizesDeListas
                     col > NumeroDeColunas || row > NumeroDeLinhas)
                     throw new IndexOutOfRangeException(OUT_OF_BOUNDS_MSG);
 
-                Celula atual = this.primeiro, antVert = this.primeiro;
+                Celula atual = this.head, antVert = this.head;
 
                 // Move o atual para o cabeçalho da coluna desejada
                 for (int i = 0; i < col; i++)
@@ -77,58 +84,44 @@ namespace MatrizesDeListas
                     atual = atual.ProxVert;
                 }
 
-                // Se a linha de atual bate com a desejada, retorna o atual
+                // Se a linha de atual bate com a desejada, muda o valor do atual
+                // Caso o valor seja nulo (0), não faz isso e segue para a exclusão
+                // da célula da matriz
                 if (atual != null && atual.Linha == row && value != DEFAULT)
                     atual.Info = value;
                 else
                 {
-                    Celula auxCol = this.primeiro, auxRow = null;
-
-                    while (auxCol.Coluna < col)
-                        auxCol = auxCol.ProxHorz;
-
-                    while (auxRow != null && auxRow.Linha < row)
-                        auxRow = auxRow.ProxVert;
-
-                    if (auxRow != null && auxRow.Linha == row)
-                    {
-                        auxRow.Info = value;
-                        return;
-                    }
-
                     // Obtém o item anterior na horizontal
-                    Celula antHorz = null;
+                    Celula antHorz = null, aux;
 
-                    auxCol = this.primeiro;
-                    while (auxCol.Coluna < col)
+                    aux = this.head;
+
+                    // Move o auxiliar para a linha desejada
+                    while (aux.Linha < row)
+                        aux = aux.ProxVert;
+
+                    // Move o auxiliar para a maior coluna que seja menor que a 
+                    // desejada e tenha uma célula na linha desejada
+                    while (aux != null && aux.Coluna < col - 1)
                     {
-                        auxRow = auxCol.ProxVert;
-
-                        if (auxRow == null) continue;
-
-                        while (auxRow.Linha < row)
-                            auxRow = auxRow.ProxVert;
-
-                        if (auxRow.Linha == row)
-                            antHorz = auxRow;
-
-                        auxCol = auxCol.ProxHorz;
+                        antHorz = aux;
+                        aux = aux.ProxHorz;
                     }
 
-                    // Cria o nó para inserir
-                    if (value != DEFAULT)
-                    {
-                        var no = new Celula(col, row, value, null, atual.ProxVert);
-
-                        no.ProxHorz = antHorz.ProxHorz;
-                        antHorz.ProxHorz = no;
-
-                        atual.ProxVert = no;
-                    }
-                    else if (atual.Linha == row)
+                    // Se o valor for 0 e houver uma célula na posição desejada, 
+                    // apaga essa célula
+                    if (value == DEFAULT && atual.Linha == row)
                     {
                         antVert.ProxVert = atual.ProxVert;
                         antHorz.ProxHorz = atual.ProxHorz;
+                    }
+
+                    // Se não, insere uma célula na posição dada
+                    else
+                    {
+                        Celula nova = new Celula(col, row, value, antHorz.ProxHorz, antVert.ProxVert);
+                        antHorz.ProxHorz = nova;
+                        antVert.ProxVert = nova;
                     }
                 }
             }
@@ -153,23 +146,25 @@ namespace MatrizesDeListas
         /// <summary>
         /// Construtor
         /// </summary>
+        /// <param name="cols">Número de colunas da matriz</param>
+        /// <param name="rows">Número de linhas da matriz</param>
         public Matriz(int cols, int rows)
         {
             this.cols = cols;
             this.rows = rows;
 
-            this.primeiro = new Celula(-1, -1, 0);
+            this.head = new Celula(-1, -1, 0);
 
             Celula aux = null;
 
             // Cria os nós cabeça
             for (int i = rows; i >= 0; --i)
                 aux = new Celula(-1, i, 0, null, aux);
-            primeiro.ProxVert = aux;
+            head.ProxVert = aux;
 
             for (int i = cols; i >= 0; --i)
                 aux = new Celula(-1, i, 0, aux, null);
-            primeiro.ProxHorz = aux;
+            head.ProxHorz = aux;
         }
 
         /// <summary>
@@ -190,9 +185,9 @@ namespace MatrizesDeListas
 
             // Percorre cada linha da matriz A e cada coluna da matriz B para calcular
             // o resultado da multiplicação e montar a matriz resultado
-            for (Celula linha = a.primeiro; linha != null; linha = linha.ProxVert)
+            for (Celula linha = a.head; linha != null; linha = linha.ProxVert)
             {
-                for (Celula coluna = b.primeiro; coluna != null; coluna = coluna.ProxHorz)
+                for (Celula coluna = b.head; coluna != null; coluna = coluna.ProxHorz)
                 {
                     double soma = 0.0;
 
@@ -233,7 +228,7 @@ namespace MatrizesDeListas
             // Percorre cada linha e cada coluna das duas matrizes simultaneamente e soma os valores
             // das matrizes para montar a matriz resultado
             for (
-                Celula rowA = a.primeiro, rowB = b.primeiro; 
+                Celula rowA = a.head, rowB = b.head; 
                 rowA != null && rowB != null; 
                 rowA = rowA.ProxVert, rowB = rowB.ProxVert
             )

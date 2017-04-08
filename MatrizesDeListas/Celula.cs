@@ -1,4 +1,13 @@
-﻿using System;
+﻿/**
+ * Celula.cs
+ * 
+ * Arquivo da classe usada pela classe Matriz para representar os nós da
+ * lista ligada cruzada
+ * 
+ * Guilherme Brandt (RA: 16173)
+ * Lucas Hideki (RA: 16186)
+ */
+using System;
 
 namespace MatrizesDeListas
 {
@@ -6,7 +15,7 @@ namespace MatrizesDeListas
     /// Classe dos nós usados na matriz
     /// </summary>
     /// <typeparam name="Dado">Tipo de dado que será armazenado no nó</typeparam>
-    class Celula : IComparable<Celula>
+    internal class Celula : IComparable<Celula>
     {
         int col, row;
         double info;
@@ -73,10 +82,10 @@ namespace MatrizesDeListas
         }
 
         /// <summary>
-        /// Compara dois nós
+        /// Compara duas células
         /// </summary>
         /// <param name="outro">Nó com o qual comparar este</param>
-        /// <returns>&gt; 0 se este for maior, 0 se forem iguais e &lt; 0 se este for menor</returns>
+        /// <returns>Retorna maior 0 se esta for maior, 0 se forem iguais e menor que 0 se esta for menor</returns>
         public int CompareTo(Celula outro)
         {
             return this.info.CompareTo(outro.Info);
