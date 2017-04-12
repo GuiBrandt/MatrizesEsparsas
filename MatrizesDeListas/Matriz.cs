@@ -13,8 +13,7 @@ namespace MatrizesDeListas
     /// <summary>
     /// Classe para a matriz
     /// </summary>
-    /// <typeparam name="Dado">Tipo de dado que será armazenado na matriz</typeparam>
-    class Matriz
+    public class Matriz
     {
         int cols, rows;
         Celula head;
@@ -30,28 +29,37 @@ namespace MatrizesDeListas
         const string OUT_OF_BOUNDS_MSG = "A coordenada especificada não se encontra na matriz";
 
         /// <summary>
+        /// Mensagem de erro para quando tenta-se uma multiplicação com matrizes que não
+        /// atendem aos requisitos da multiplicação de matrizes
+        /// </summary>
+        const string INVALID_OPERATION_MULT = "Multiplicação de matrizes inválida";
+
+        /// <summary>
+        /// Mensagem de erro para quando tenta-se uma soma com matrizes que não
+        /// atendem aos requisitos da soma de matrizes
+        /// </summary>
+        const string INVALID_OPERATION_ADD = "Soma de matrizes inválida";
+
+        /// <summary>
         /// Obtém ou define o número numa determinada posição na matriz
         /// </summary>
-        /// <param name="col">Coluna do dado que se deseja obter</param>
         /// <param name="row">Linha do dado que se deseja obter</param>
+        /// <param name="col">Coluna do dado que se deseja obter</param>
         /// <returns>O número na posição passada por parâmetro</returns>
-        public double this[int col, int row]
+        public double this[int row, int col]
         {
             get
             {
-                // Se o número de coluna ou o número de linha desejados estiver
+                // Se o número de coluna ou o número de linha desejados estiverem
                 // fora do limite da matriz, o acesso é inválido
                 if (col < 0 || row < 0 ||
                     col > NumeroDeColunas || row > NumeroDeLinhas)
                         throw new IndexOutOfRangeException(OUT_OF_BOUNDS_MSG);
 
-                Celula atual = this.head;
-
-                // Move o atual para o cabeçalho da coluna desejada
-                for (int i = 0; i < col; i++)
-                    atual = atual.ProxHorz;
+                Celula atual = SentinelaParaColuna(col);
                 
-                // Move o atual para a linha desejada
+                // Move o atual para baixo até que a linha de atual seja maior ou
+                // igual à linha desejada
                 while (atual != null && atual.Linha < row)
                     atual = atual.ProxVert;
                 
@@ -71,11 +79,8 @@ namespace MatrizesDeListas
                     col > NumeroDeColunas || row > NumeroDeLinhas)
                     throw new IndexOutOfRangeException(OUT_OF_BOUNDS_MSG);
 
-                Celula atual = this.head, antVert = this.head;
-
-                // Move o atual para o cabeçalho da coluna desejada
-                for (int i = 0; i < col; i++)
-                    atual = atual.ProxHorz;
+                Celula atual = SentinelaParaColuna(col), 
+                       antVert = atual;
 
                 // Move o atual para a linha desejada
                 while (atual != null && atual.Linha < row)
@@ -87,18 +92,12 @@ namespace MatrizesDeListas
                 // Se a linha de atual bate com a desejada, muda o valor do atual
                 // Caso o valor seja nulo (0), não faz isso e segue para a exclusão
                 // da célula da matriz
-                if (atual != null && atual.Linha == row && value != DEFAULT)
+                if (atual != null && atual.Linha == row)
                     atual.Info = value;
                 else
                 {
                     // Obtém o item anterior na horizontal
-                    Celula antHorz = null, aux;
-
-                    aux = this.head;
-
-                    // Move o auxiliar para a linha desejada
-                    while (aux.Linha < row)
-                        aux = aux.ProxVert;
+                    Celula aux = SentinelaParaLinha(row), antHorz = aux;
 
                     // Move o auxiliar para a maior coluna que seja menor que a 
                     // desejada e tenha uma célula na linha desejada
@@ -110,7 +109,7 @@ namespace MatrizesDeListas
 
                     // Se o valor for 0 e houver uma célula na posição desejada, 
                     // apaga essa célula
-                    if (value == DEFAULT && atual.Linha == row)
+                    if (value == DEFAULT && atual != null && atual.Linha == row)
                     {
                         antVert.ProxVert = atual.ProxVert;
                         antHorz.ProxHorz = atual.ProxHorz;
@@ -125,6 +124,38 @@ namespace MatrizesDeListas
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Obtém a célula-cabeça para a coluna desejada
+        /// </summary>
+        /// <param name="col">Número da coluna</param>
+        private Celula SentinelaParaColuna(int col)
+        {
+            if (col < 0 || col > this.NumeroDeColunas)
+                throw new Exception(OUT_OF_BOUNDS_MSG);
+
+            Celula cell = this.head;
+            while (cell.Coluna < col)
+                cell = cell.ProxHorz;
+
+            return cell;
+        }
+
+        /// <summary>
+        /// Obtém a célula-cabeça para a linha desejada
+        /// </summary>
+        /// <param name="row">Número da linha</param>
+        private Celula SentinelaParaLinha(int row)
+        {
+            if (row < 0 || row > this.NumeroDeLinhas)
+                throw new Exception(OUT_OF_BOUNDS_MSG);
+
+            Celula cell = this.head;
+            while (cell.Linha < row)
+                cell = cell.ProxVert;
+
+            return cell;
         }
 
         /// <summary>
@@ -163,7 +194,7 @@ namespace MatrizesDeListas
             head.ProxVert = aux;
 
             for (int i = cols; i >= 0; --i)
-                aux = new Celula(-1, i, 0, aux, null);
+                aux = new Celula(i, -1, 0, aux, null);
             head.ProxHorz = aux;
         }
 
@@ -179,31 +210,24 @@ namespace MatrizesDeListas
             // O número de linhas de B tem que ser igual ao número de colunas de A,
             // se não for, as matrizes não são multiplicáveis
             if (b.NumeroDeLinhas != a.NumeroDeColunas)
-                throw new Exception("Multiplicação de matrizes inválida");
+                throw new Exception(INVALID_OPERATION_MULT);
 
             Matriz resultado = new Matriz(b.NumeroDeColunas, a.NumeroDeLinhas);
 
             // Percorre cada linha da matriz A e cada coluna da matriz B para calcular
             // o resultado da multiplicação e montar a matriz resultado
-            for (Celula linha = a.head; linha != null; linha = linha.ProxVert)
+            for (int l = 0; l < a.NumeroDeLinhas; l++)
             {
-                for (Celula coluna = b.head; coluna != null; coluna = coluna.ProxHorz)
+                for (int c = 0; c < b.NumeroDeColunas; c++)
                 {
                     double soma = 0.0;
 
-                    Celula atualA = linha.ProxHorz;
-                    Celula atualB = coluna.ProxVert;
+                    // Computa o valor da célula atual na matriz resultado a partir
+                    // da soma dos produtos das células nas matrizes A e B
+                    for (int i = 0; i < a.NumeroDeColunas; i++)
+                        soma += a[l, i] * b[i, c];                    
 
-                    // Faz a soma dos produtos entre as linha atual em A e a coluna atual em B
-                    do
-                    {
-                        soma += atualA.Info * atualB.Info;
-
-                        atualA = atualA.ProxHorz;
-                        atualB = atualB.ProxVert;
-                    } while (atualA != null & atualB != null);
-
-                    resultado[coluna.Coluna, linha.Linha] = soma;
+                    resultado[l, c] = soma;
                 }
             }
 
@@ -221,25 +245,28 @@ namespace MatrizesDeListas
         {
             // As matrizes têm de ter as mesmas dimensões para a soma
             if (b.NumeroDeColunas != a.NumeroDeColunas || b.NumeroDeLinhas != a.NumeroDeLinhas)
-                throw new Exception("Soma de matrizes inválida");
+                throw new Exception(INVALID_OPERATION_ADD);
 
             Matriz resultado = new Matriz(a.NumeroDeColunas, a.NumeroDeLinhas);
 
             // Percorre cada linha e cada coluna das duas matrizes simultaneamente e soma os valores
             // das matrizes para montar a matriz resultado
-            for (
-                Celula rowA = a.head, rowB = b.head; 
-                rowA != null && rowB != null; 
-                rowA = rowA.ProxVert, rowB = rowB.ProxVert
-            )
-                for (
-                    Celula atualA = rowA.ProxHorz, atualB = rowB.ProxHorz;
-                    atualA != null && atualB != null;
-                    atualA = atualA.ProxHorz, atualB = atualB.ProxHorz
-                )
-                    resultado[atualA.Coluna, rowA.Linha] = atualA.Info + atualB.Info;
+            for (int c = 0; c < a.NumeroDeColunas; c++)
+                for (int l = 0; l < a.NumeroDeLinhas; l++)
+                    resultado[l, c] = a[l, c] + b[l, c];
 
             return resultado;
+        }
+
+        /// <summary>
+        /// Soma uma constante k a todos os valores em uma determinada coluna da matriz
+        /// </summary>
+        /// <param name="col">Número da coluna</param>
+        /// <param name="k">Constante a ser somada aos valores</param>
+        public void SomarNaColuna(int col, double k)
+        {
+            for (int row = 0; row < NumeroDeLinhas; row++)
+                this[row, col] += k;
         }
     }
 }
